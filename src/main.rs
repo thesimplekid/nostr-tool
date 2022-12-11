@@ -1,9 +1,10 @@
+use clap::{Args, Parser, Subcommand};
+use nostr_rust::nostr_client::Client;
+use nostr_rust::req::ReqFilter;
+use nostr_rust::Identity;
+use serde::Deserialize;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use clap::{Args, Parser, Subcommand};
-use nostr_rust::Identity;
-use nostr_rust::nostr_client::Client;
-use serde::Deserialize;
 
 /// Simple CLI application to interact with nostr
 #[derive(Parser)]
@@ -38,7 +39,11 @@ enum Commands {
     DeleteEvent(DeleteEvent),
     /// React to an event
     React(Reaction),
+    /// Get all events
+    ListEvents(ListEvents),
 }
+
+
 
 #[derive(Args)]
 struct UpdateMetadata {
@@ -114,6 +119,36 @@ struct Reaction {
     reaction: String,
 }
 
+
+#[derive(Args)]
+struct ListEvents {
+    /// Ids
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    ids: Option<Vec<String>>,
+    /// Authors
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    authors: Option<Vec<String>>,
+    /// Kinds 
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    kinds: Option<Vec<u8>>,
+    /// p tag
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    e: Option<Vec<String>>,
+    /// p tag
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    p: Option<Vec<String>>,
+    /// Since
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    since: Option<u64>,
+    /// Until
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    until: Option<u64>,
+    /// Limit
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    limit: Option<u64>,
+
+}
+
 fn main() {
     // Parse input
     let args: Cli = Cli::parse();
@@ -132,16 +167,17 @@ fn main() {
             println!("No private key provided, creating new identity");
             let (secret_key, _) = nostr_rust::keys::get_random_secret_key();
             let identity = Identity::from_str(&secret_key.display_secret().to_string()).unwrap();
-            println!("Using new private key {}", identity.secret_key.display_secret().to_string());
+            println!(
+                "Using new private key {}",
+                identity.secret_key.display_secret().to_string()
+            );
             println!("Using new public key {}", identity.public_key.to_string());
             identity
         }
     };
     let str_slice = args.relay.iter().map(String::as_str).collect();
     // Set up relay connection(s)
-    let client = Arc::new(Mutex::new(
-        Client::new(str_slice).unwrap()
-    ));
+    let client = Arc::new(Mutex::new(Client::new(str_slice).unwrap()));
 
     // Post event
     match &args.command {
@@ -244,9 +280,38 @@ fn main() {
             let event = client
                 .lock()
                 .unwrap()
-                .react_to(&identity, &args.event_id, &args.author_pubkey, &args.reaction)
+                .react_to(
+                    &identity,
+                    &args.event_id,
+                    &args.author_pubkey,
+                    &args.reaction,
+                )
                 .unwrap();
-            println!("Reacted to {} with {} in event {}", &args.event_id, args.reaction, event.id);
+            println!(
+                "Reacted to {} with {} in event {}",
+                &args.event_id, args.reaction, event.id
+            );
+        }
+        Commands::ListEvents(command_args) => {
+            println!("List");
+
+            let events = client
+                .lock()
+                .unwrap()
+                .get_events_of(vec![ReqFilter {
+                    ids: command_args.ids.clone(),
+                    authors: command_args.authors.clone(),
+                    kinds: command_args.kinds.clone(),
+                    e: command_args.e.clone(),
+                    p: command_args.p.clone(),
+                    since: command_args.since,
+                    until: command_args.until,
+                    limit: command_args.limit,
+                }])
+                .unwrap();
+            for (i, event) in events.iter().enumerate() {
+                println!("{}: {:#?}", i, event);
+            }
         }
     }
 }
