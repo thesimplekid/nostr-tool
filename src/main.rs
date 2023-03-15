@@ -64,6 +64,8 @@ enum Commands {
     Nprofile(sub_commands::nprofile::NprofileSubCommand),
     /// Broadcast events from file
     BroadcastEvents(sub_commands::broadcast_events::BroadcastEventsSubCommand),
+    /// Update relay user list
+    ManageRelayUsers(sub_commands::manage_relay_users::ManageRelayUsers),
 }
 
 fn main() -> Result<()> {
@@ -171,6 +173,13 @@ fn main() -> Result<()> {
         ),
         Commands::BroadcastEvents(sub_command_args) => {
             sub_commands::broadcast_events::broadcast_events(args.relays, sub_command_args)
+        }
+        Commands::ManageRelayUsers(sub_command_args) => {
+            sub_commands::manage_relay_users::manage_relay_users(
+                args.private_key,
+                args.relays,
+                sub_command_args,
+            )
         }
     }
 }

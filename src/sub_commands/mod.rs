@@ -6,6 +6,7 @@ pub mod dm;
 pub mod generate_keypair;
 pub mod hide_public_channel_message;
 pub mod list_events;
+pub mod manage_relay_users;
 pub mod mute_publickey;
 pub mod nprofile;
 pub mod publish_contactlist_csv;
